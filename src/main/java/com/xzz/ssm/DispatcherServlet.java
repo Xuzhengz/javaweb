@@ -21,13 +21,14 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * @author 徐正洲
  * @create 2023-02-09 12:31
- *
+ * <p>
  * DispatcherServlet作用：利用反射转发请求至不同的servlet以及到具体的方法。
  */
 
@@ -36,7 +37,8 @@ public class DispatcherServlet extends ViewBaseServlet {
     private Map<String, Object> beanMap = new HashMap<>();
 
     @Override
-    public void init(ServletConfig config) throws ServletException {
+    public void init() throws ServletException {
+        super.init();
         System.out.println("正在初始化~~~~~");
         InputStream resourceAsStream = DispatcherServlet.class.getClassLoader().getResourceAsStream("applicationContext.xml");
 
@@ -61,14 +63,8 @@ public class DispatcherServlet extends ViewBaseServlet {
 
                     //获取到具体servlet类
                     Class controllerBeanClass = Class.forName(aClass);
-                    
+
                     Object beanObj = controllerBeanClass.newInstance();
-
-                    Method setServletContext = controllerBeanClass.getDeclaredMethod("setServletContext", ServletContext.class);
-                    setServletContext.setAccessible(true);
-                    setServletContext.invoke(beanObj, config.getServletContext());
-
-
                     beanMap.put(id, beanObj);
                 }
             }
@@ -86,15 +82,11 @@ public class DispatcherServlet extends ViewBaseServlet {
             throw new RuntimeException(e);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
-        }catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
         }
     }
 
     @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         req.setCharacterEncoding("UTF-8");
 
         String servletPath = req.getServletPath();
@@ -112,15 +104,43 @@ public class DispatcherServlet extends ViewBaseServlet {
 
         //根据operate获取对应的方法
         try {
-            Method method = controllerBeanObj.getClass().getDeclaredMethod(operate, HttpServletRequest.class, HttpServletResponse.class);
-            if (method != null) {
-                method.setAccessible(true);
-                method.invoke(controllerBeanObj, req, resp);
-            } else {
-                System.out.println("operate非法！！！");
+            Method[] methods = controllerBeanObj.getClass().getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.getName().equals(operate)) {
+                    //1.统一获取请求参数
+                    Parameter[] parameters = method.getParameters();
+                    Object[] parametersValues = new Object[parameters.length];
+
+                    for (int i1 = 0; i1 < parameters.length; i1++) {
+                        Parameter parameter = parameters[i];
+                        String parameterName = parameter.getName();
+
+                        if ("req".equals(parameterName)) {
+                            parametersValues[i] = req;
+                        } else if ("resp".equals(parameterName)) {
+                            parametersValues[i] = resp;
+                        } else if ("session".equals(parameterName)) {
+                            parametersValues[i] = req.getSession();
+                        } else {
+                            String parameterv = req.getParameter(parameterName);
+                            parametersValues[i] = parameterv;
+                        }
+                    }
+
+                    method.setAccessible(true);
+                    Object methodValue = method.invoke(controllerBeanObj, parametersValues);
+                    if (methodValue != null) {
+                        String sendRedirect = (String) methodValue;
+                        if (sendRedirect.startsWith("redirect:")) {
+                            String redirectRet = sendRedirect.substring("redirect".length());
+                            resp.sendRedirect(redirectRet);
+                        } else {
+                            super.processTemplate(sendRedirect, req, resp);
+                        }
+
+                    }
+                }
             }
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
         } catch (InvocationTargetException e) {
             throw new RuntimeException(e);
         } catch (IllegalAccessException e) {

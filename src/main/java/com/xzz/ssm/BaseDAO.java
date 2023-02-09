@@ -8,10 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class BaseDAO<T> {
-    public final String DRIVER = "com.mysql.jdbc.Driver";
-    public final String URL = "jdbc:mysql://172.16.8.200:30001/people?useUnicode=true&characterEncoding=utf-8&useSSL=false";
+    public final String DRIVER = "com.mysql.cj.jdbc.Driver";
+    public final String URL = "jdbc:mysql://hadoop102:3306/javaweb?useUnicode=true&characterEncoding=utf-8&useSSL=false";
     public final String USER = "root";
-    public final String PWD = "1qaz@WSX";
+    public final String PWD = "123456";
 
     protected Connection conn;
     protected PreparedStatement psmt;
