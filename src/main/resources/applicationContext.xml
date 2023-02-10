@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <beans>
-    <bean id="fruit" class="com.xzz.fruit.controllers.FruitController"></bean>
+    <bean id="fruitService" class="com.xzz.fruit.service.FruitServiceImpl">
+        <property name="fruitDAO" ref="fruitDAO"/>
+    </bean>
+    <bean id="fruitDAO" class="com.xzz.fruit.dao.FruitDAOImpl"></bean>
+    <bean id="fruit" class="com.xzz.fruit.controllers.FruitController">
+        <!--name表示当前bean指向的类属性，value表示给这个属性对应上指定类,从对应的id的class获取  -->
+        <property name="fruitService" ref="fruitService"/>
+    </bean>
 </beans>
